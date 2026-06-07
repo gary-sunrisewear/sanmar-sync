@@ -62,7 +62,7 @@ function Page() {
       </div>
       {(Object.keys(SCHEMA) as Supplier[]).map((s) => {
         const row = data.rows.find((r) => r.supplier === s);
-        return <SupplierCard key={s} supplier={s} row={row} />;
+        return <SupplierCard key={s} supplier={s} row={row as never} />;
       })}
     </div>
   );
