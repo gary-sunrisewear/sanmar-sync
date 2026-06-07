@@ -14,16 +14,299 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      imported_products: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          imported_by: string | null
+          last_inventory_sync_at: string | null
+          last_price_sync_at: string | null
+          meta: Json
+          product_type: string | null
+          shopify_handle: string | null
+          shopify_product_id: string
+          supplier: Database["public"]["Enums"]["supplier_code"]
+          supplier_style_id: string
+          supplier_style_name: string | null
+          updated_at: string
+          vendor: string | null
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          imported_by?: string | null
+          last_inventory_sync_at?: string | null
+          last_price_sync_at?: string | null
+          meta?: Json
+          product_type?: string | null
+          shopify_handle?: string | null
+          shopify_product_id: string
+          supplier: Database["public"]["Enums"]["supplier_code"]
+          supplier_style_id: string
+          supplier_style_name?: string | null
+          updated_at?: string
+          vendor?: string | null
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          imported_by?: string | null
+          last_inventory_sync_at?: string | null
+          last_price_sync_at?: string | null
+          meta?: Json
+          product_type?: string | null
+          shopify_handle?: string | null
+          shopify_product_id?: string
+          supplier?: Database["public"]["Enums"]["supplier_code"]
+          supplier_style_id?: string
+          supplier_style_name?: string | null
+          updated_at?: string
+          vendor?: string | null
+        }
+        Relationships: []
+      }
+      imported_variants: {
+        Row: {
+          color: string | null
+          cost: number | null
+          created_at: string
+          id: string
+          last_qty: number | null
+          last_synced_at: string | null
+          price: number | null
+          product_id: string
+          shopify_inventory_item_id: string | null
+          shopify_variant_id: string
+          size: string | null
+          supplier_sku: string
+          updated_at: string
+        }
+        Insert: {
+          color?: string | null
+          cost?: number | null
+          created_at?: string
+          id?: string
+          last_qty?: number | null
+          last_synced_at?: string | null
+          price?: number | null
+          product_id: string
+          shopify_inventory_item_id?: string | null
+          shopify_variant_id: string
+          size?: string | null
+          supplier_sku: string
+          updated_at?: string
+        }
+        Update: {
+          color?: string | null
+          cost?: number | null
+          created_at?: string
+          id?: string
+          last_qty?: number | null
+          last_synced_at?: string | null
+          price?: number | null
+          product_id?: string
+          shopify_inventory_item_id?: string | null
+          shopify_variant_id?: string
+          size?: string | null
+          supplier_sku?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "imported_variants_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "imported_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      markup_rules: {
+        Row: {
+          charm_pricing: boolean
+          created_at: string
+          flat_add: number
+          id: string
+          match_field: string | null
+          match_value: string | null
+          multiplier: number
+          priority: number
+          round_to: number
+          supplier: Database["public"]["Enums"]["supplier_code"] | null
+          updated_at: string
+        }
+        Insert: {
+          charm_pricing?: boolean
+          created_at?: string
+          flat_add?: number
+          id?: string
+          match_field?: string | null
+          match_value?: string | null
+          multiplier?: number
+          priority?: number
+          round_to?: number
+          supplier?: Database["public"]["Enums"]["supplier_code"] | null
+          updated_at?: string
+        }
+        Update: {
+          charm_pricing?: boolean
+          created_at?: string
+          flat_add?: number
+          id?: string
+          match_field?: string | null
+          match_value?: string | null
+          multiplier?: number
+          priority?: number
+          round_to?: number
+          supplier?: Database["public"]["Enums"]["supplier_code"] | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          display_name: string | null
+          email: string | null
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string | null
+          email?: string | null
+          id: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string | null
+          email?: string | null
+          id?: string
+        }
+        Relationships: []
+      }
+      supplier_credentials: {
+        Row: {
+          config: Json
+          created_at: string
+          enabled: boolean
+          id: string
+          last_test_at: string | null
+          last_test_message: string | null
+          last_test_ok: boolean | null
+          supplier: Database["public"]["Enums"]["supplier_code"]
+          updated_at: string
+        }
+        Insert: {
+          config?: Json
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          last_test_at?: string | null
+          last_test_message?: string | null
+          last_test_ok?: boolean | null
+          supplier: Database["public"]["Enums"]["supplier_code"]
+          updated_at?: string
+        }
+        Update: {
+          config?: Json
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          last_test_at?: string | null
+          last_test_message?: string | null
+          last_test_ok?: boolean | null
+          supplier?: Database["public"]["Enums"]["supplier_code"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      sync_jobs: {
+        Row: {
+          errors: Json | null
+          finished_at: string | null
+          id: string
+          items_failed: number | null
+          items_ok: number | null
+          items_total: number | null
+          kind: Database["public"]["Enums"]["sync_job_kind"]
+          notes: string | null
+          started_at: string
+          status: Database["public"]["Enums"]["sync_job_status"]
+          supplier: Database["public"]["Enums"]["supplier_code"] | null
+          triggered_by: string | null
+        }
+        Insert: {
+          errors?: Json | null
+          finished_at?: string | null
+          id?: string
+          items_failed?: number | null
+          items_ok?: number | null
+          items_total?: number | null
+          kind: Database["public"]["Enums"]["sync_job_kind"]
+          notes?: string | null
+          started_at?: string
+          status?: Database["public"]["Enums"]["sync_job_status"]
+          supplier?: Database["public"]["Enums"]["supplier_code"] | null
+          triggered_by?: string | null
+        }
+        Update: {
+          errors?: Json | null
+          finished_at?: string | null
+          id?: string
+          items_failed?: number | null
+          items_ok?: number | null
+          items_total?: number | null
+          kind?: Database["public"]["Enums"]["sync_job_kind"]
+          notes?: string | null
+          started_at?: string
+          status?: Database["public"]["Enums"]["sync_job_status"]
+          supplier?: Database["public"]["Enums"]["supplier_code"] | null
+          triggered_by?: string | null
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "operator"
+      supplier_code: "sanmar" | "ssactivewear" | "ascolour" | "ottocap"
+      sync_job_kind: "import" | "inventory" | "price"
+      sync_job_status: "running" | "success" | "partial" | "failed"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +433,11 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "operator"],
+      supplier_code: ["sanmar", "ssactivewear", "ascolour", "ottocap"],
+      sync_job_kind: ["import", "inventory", "price"],
+      sync_job_status: ["running", "success", "partial", "failed"],
+    },
   },
 } as const
