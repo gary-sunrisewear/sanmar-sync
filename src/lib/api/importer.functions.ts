@@ -207,12 +207,13 @@ export const importProduct = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     // record job
-    const { data: jobRow } = await supabaseAdmin
+    const { data: jobRow, error: jobErr } = await supabaseAdmin
       .from("sync_jobs")
       .insert({ kind: "import", supplier: data.supplier, status: "running", triggered_by: userId, items_total: 1 })
       .select("id")
       .single();
-    const jobId = jobRow?.id;
+    if (jobErr || !jobRow) throw new Error(jobErr?.message ?? "Failed to create job");
+    const jobId: string = jobRow.id;
 
     try {
       const [credRes, rulesRes] = await Promise.all([
