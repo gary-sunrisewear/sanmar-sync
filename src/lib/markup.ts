@@ -24,7 +24,7 @@ export function selectRule(rules: MarkupRule[], ctx: MarkupContext): MarkupRule 
     .filter((r) => !r.supplier || r.supplier === ctx.supplier)
     .filter((r) => {
       if (!r.match_field || !r.match_value) return true;
-      const v = (ctx as Record<string, unknown>)[r.match_field];
+      const v = (ctx as unknown as Record<string, unknown>)[r.match_field];
       return typeof v === "string" && v.toLowerCase() === r.match_value.toLowerCase();
     })
     .sort((a, b) => {
