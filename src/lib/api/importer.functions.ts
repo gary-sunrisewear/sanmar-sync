@@ -80,7 +80,7 @@ export const testSupplierCredential = createServerFn({ method: "POST" })
       .eq("supplier", data.supplier)
       .maybeSingle();
     if (error) throw new Error(error.message);
-    if (!cred) return { ok: false, message: "No credentials saved yet." };
+    if (!cred) return { ok: false, msg: "No credentials saved yet." };
 
     const { testSupplier } = await import("@/lib/suppliers/index.server");
     const result = await testSupplier(data.supplier, (cred.config as Record<string, string>) ?? {});
