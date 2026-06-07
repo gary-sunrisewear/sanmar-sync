@@ -60,7 +60,7 @@ export const Route = createFileRoute("/api/public/cron/inventory-sync")({
 
           const jobInsert = await supabaseAdmin.from("sync_jobs").insert({
             kind: "inventory",
-            supplier,
+            supplier: supplier as "sanmar" | "ssactivewear" | "ascolour" | "ottocap",
             status: "running",
             notes: `Scheduled inventory sync for ${prods!.length} products`,
           }).select("id").single();
