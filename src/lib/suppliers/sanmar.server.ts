@@ -58,10 +58,13 @@ function pick1(xml: string, tag: string): string | null {
 export async function sanmarTest(cfg: SupplierCredConfig): Promise<{ ok: boolean; msg: string }> {
   try {
     const c = creds(cfg);
-    const body = `<ns:GetProductSellableRequest xmlns:ns="http://www.promostandards.org/WSDL/ProductDataService/2.0.0/">
-      <wsVersion>2.0.0</wsVersion><id>${c.id}</id><password>${c.password}</password><localizationCountry>US</localizationCountry><localizationLanguage>en</localizationLanguage>
-    </ns:GetProductSellableRequest>`;
-    await soap(cfg, "/promostandards/ProductDataServiceBindingV2", "getProductSellable", body);
+    // Use Inventory 2.0.0 getFilterValues — lightweight credential check that
+    // doesn't require a real productId. Element order matches the XSD sequence:
+    // wsVersion, id, password.
+    const body = `<ns:GetFilterValuesRequest xmlns:ns="http://www.promostandards.org/WSDL/Inventory/2.0.0/">
+      <ns:wsVersion>2.0.0</ns:wsVersion><ns:id>${c.id}</ns:id><ns:password>${c.password}</ns:password>
+    </ns:GetFilterValuesRequest>`;
+    await soap(cfg, "/promostandards/InventoryServiceBindingV2", "", body);
     return { ok: true, msg: "Connected" };
   } catch (e) {
     return { ok: false, msg: e instanceof Error ? e.message : String(e) };
@@ -83,10 +86,10 @@ export async function sanmarSearchStyles(cfg: SupplierCredConfig, q: string): Pr
 export async function sanmarGetProduct(cfg: SupplierCredConfig, styleId: string): Promise<SupplierProduct> {
   const c = creds(cfg);
   const body = `<ns:GetProductRequest xmlns:ns="http://www.promostandards.org/WSDL/ProductDataService/2.0.0/">
-    <wsVersion>2.0.0</wsVersion><id>${c.id}</id><password>${c.password}</password>
-    <productId>${styleId}</productId><localizationCountry>US</localizationCountry><localizationLanguage>en</localizationLanguage>
+    <ns:wsVersion>2.0.0</ns:wsVersion><ns:id>${c.id}</ns:id><ns:password>${c.password}</ns:password>
+    <ns:productId>${styleId}</ns:productId><ns:localizationCountry>US</ns:localizationCountry><ns:localizationLanguage>en</ns:localizationLanguage>
   </ns:GetProductRequest>`;
-  const xml = await soap(cfg, "/promostandards/ProductDataServiceBindingV2", "getProduct", body);
+  const xml = await soap(cfg, "/promostandards/ProductDataServiceBindingV2", "", body);
 
   const title = pick1(xml, "productName") ?? styleId;
   const description = pick1(xml, "description");
@@ -133,10 +136,10 @@ export async function sanmarGetInventory(cfg: SupplierCredConfig, skus: string[]
   const out: SupplierInventoryRow[] = [];
   for (const sku of skus) {
     const body = `<ns:GetInventoryLevelsRequest xmlns:ns="http://www.promostandards.org/WSDL/Inventory/2.0.0/">
-      <wsVersion>2.0.0</wsVersion><id>${c.id}</id><password>${c.password}</password><productId>${sku}</productId>
+      <ns:wsVersion>2.0.0</ns:wsVersion><ns:id>${c.id}</ns:id><ns:password>${c.password}</ns:password><ns:productId>${sku}</ns:productId>
     </ns:GetInventoryLevelsRequest>`;
     try {
-      const xml = await soap(cfg, "/promostandards/InventoryServiceBindingV2", "getInventoryLevels", body);
+      const xml = await soap(cfg, "/promostandards/InventoryServiceBindingV2", "", body);
       const qty = Number(pick1(xml, "quantityAvailable") ?? 0);
       out.push({ sku, qty: Number.isFinite(qty) ? qty : 0 });
     } catch (e) {
