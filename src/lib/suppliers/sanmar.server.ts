@@ -28,7 +28,7 @@ function creds(cfg: SupplierCredConfig) {
   return { id, user, password };
 }
 
-function xml(value: string): string {
+function escapeXml(value: string): string {
   return value
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
@@ -70,7 +70,7 @@ export async function sanmarTest(cfg: SupplierCredConfig): Promise<{ ok: boolean
     // The request wrapper lives in the service namespace, but the child fields are
     // declared in the PromoStandards SharedObjects namespace.
     const body = `<inv:GetInventoryLevelsRequest xmlns:inv="http://www.promostandards.org/WSDL/Inventory/2.0.0/" xmlns:sh="http://www.promostandards.org/WSDL/Inventory/2.0.0/SharedObjects/">
-      <sh:wsVersion>2.0.0</sh:wsVersion><sh:id>${xml(c.id)}</sh:id><sh:password>${xml(c.password)}</sh:password><sh:productId>PC61</sh:productId>
+      <sh:wsVersion>2.0.0</sh:wsVersion><sh:id>${escapeXml(c.id)}</sh:id><sh:password>${escapeXml(c.password)}</sh:password><sh:productId>PC61</sh:productId>
     </inv:GetInventoryLevelsRequest>`;
     const xml = await soap(cfg, "/promostandards/InventoryServiceBindingV2", "getInventoryLevels", body);
     // An auth failure returns a <ServiceMessage> with code 110/115 inside a 200 response.
@@ -98,8 +98,8 @@ export async function sanmarSearchStyles(cfg: SupplierCredConfig, q: string): Pr
 export async function sanmarGetProduct(cfg: SupplierCredConfig, styleId: string): Promise<SupplierProduct> {
   const c = creds(cfg);
   const body = `<pd:GetProductRequest xmlns:pd="http://www.promostandards.org/WSDL/ProductDataService/2.0.0/" xmlns:sh="http://www.promostandards.org/WSDL/ProductDataService/2.0.0/SharedObjects/">
-    <sh:wsVersion>2.0.0</sh:wsVersion><sh:id>${xml(c.id)}</sh:id><sh:password>${xml(c.password)}</sh:password>
-    <sh:localizationCountry>US</sh:localizationCountry><sh:localizationLanguage>en</sh:localizationLanguage><sh:productId>${xml(styleId)}</sh:productId>
+    <sh:wsVersion>2.0.0</sh:wsVersion><sh:id>${escapeXml(c.id)}</sh:id><sh:password>${escapeXml(c.password)}</sh:password>
+    <sh:localizationCountry>US</sh:localizationCountry><sh:localizationLanguage>en</sh:localizationLanguage><sh:productId>${escapeXml(styleId)}</sh:productId>
   </pd:GetProductRequest>`;
   const xml = await soap(cfg, "/promostandards/ProductDataServiceBindingV2", "getProduct", body);
 
@@ -148,7 +148,7 @@ export async function sanmarGetInventory(cfg: SupplierCredConfig, skus: string[]
   const out: SupplierInventoryRow[] = [];
   for (const sku of skus) {
       const body = `<inv:GetInventoryLevelsRequest xmlns:inv="http://www.promostandards.org/WSDL/Inventory/2.0.0/" xmlns:sh="http://www.promostandards.org/WSDL/Inventory/2.0.0/SharedObjects/">
-      <sh:wsVersion>2.0.0</sh:wsVersion><sh:id>${xml(c.id)}</sh:id><sh:password>${xml(c.password)}</sh:password><sh:productId>${xml(sku)}</sh:productId>
+      <sh:wsVersion>2.0.0</sh:wsVersion><sh:id>${escapeXml(c.id)}</sh:id><sh:password>${escapeXml(c.password)}</sh:password><sh:productId>${escapeXml(sku)}</sh:productId>
     </inv:GetInventoryLevelsRequest>`;
     try {
       const xml = await soap(cfg, "/promostandards/InventoryServiceBindingV2", "getInventoryLevels", body);
