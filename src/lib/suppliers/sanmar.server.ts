@@ -58,10 +58,13 @@ function pick1(xml: string, tag: string): string | null {
 export async function sanmarTest(cfg: SupplierCredConfig): Promise<{ ok: boolean; msg: string }> {
   try {
     const c = creds(cfg);
-    const body = `<ns:GetProductSellableRequest xmlns:ns="http://www.promostandards.org/WSDL/ProductDataService/2.0.0/">
-      <wsVersion>2.0.0</wsVersion><id>${c.id}</id><password>${c.password}</password><localizationCountry>US</localizationCountry><localizationLanguage>en</localizationLanguage>
-    </ns:GetProductSellableRequest>`;
-    await soap(cfg, "/promostandards/ProductDataServiceBindingV2", "getProductSellable", body);
+    // Use Inventory 2.0.0 getFilterValues — lightweight credential check that
+    // doesn't require a real productId. Element order matches the XSD sequence:
+    // wsVersion, id, password.
+    const body = `<ns:GetFilterValuesRequest xmlns:ns="http://www.promostandards.org/WSDL/Inventory/2.0.0/">
+      <ns:wsVersion>2.0.0</ns:wsVersion><ns:id>${c.id}</ns:id><ns:password>${c.password}</ns:password>
+    </ns:GetFilterValuesRequest>`;
+    await soap(cfg, "/promostandards/InventoryServiceBindingV2", "", body);
     return { ok: true, msg: "Connected" };
   } catch (e) {
     return { ok: false, msg: e instanceof Error ? e.message : String(e) };
