@@ -136,10 +136,10 @@ export async function sanmarGetInventory(cfg: SupplierCredConfig, skus: string[]
   const out: SupplierInventoryRow[] = [];
   for (const sku of skus) {
     const body = `<ns:GetInventoryLevelsRequest xmlns:ns="http://www.promostandards.org/WSDL/Inventory/2.0.0/">
-      <wsVersion>2.0.0</wsVersion><id>${c.id}</id><password>${c.password}</password><productId>${sku}</productId>
+      <ns:wsVersion>2.0.0</ns:wsVersion><ns:id>${c.id}</ns:id><ns:password>${c.password}</ns:password><ns:productId>${sku}</ns:productId>
     </ns:GetInventoryLevelsRequest>`;
     try {
-      const xml = await soap(cfg, "/promostandards/InventoryServiceBindingV2", "getInventoryLevels", body);
+      const xml = await soap(cfg, "/promostandards/InventoryServiceBindingV2", "", body);
       const qty = Number(pick1(xml, "quantityAvailable") ?? 0);
       out.push({ sku, qty: Number.isFinite(qty) ? qty : 0 });
     } catch (e) {
