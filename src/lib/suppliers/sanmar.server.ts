@@ -28,6 +28,15 @@ function creds(cfg: SupplierCredConfig) {
   return { id, user, password };
 }
 
+function xml(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&apos;");
+}
+
 async function soap(cfg: SupplierCredConfig, path: string, action: string, body: string): Promise<string> {
   const envelope = `<?xml version="1.0" encoding="UTF-8"?>
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/">
@@ -58,13 +67,12 @@ function pick1(xml: string, tag: string): string | null {
 export async function sanmarTest(cfg: SupplierCredConfig): Promise<{ ok: boolean; msg: string }> {
   try {
     const c = creds(cfg);
-    // Test using Inventory 2.0.0 getInventoryLevels with SanMar's reference style "PC61".
-    // PromoStandards XSDs are elementFormDefault="qualified" so child elements need the ns prefix,
-    // and the sequence is: wsVersion, id, password, productId.
-    const body = `<ns:GetInventoryLevelsRequest xmlns:ns="http://www.promostandards.org/WSDL/Inventory/2.0.0/">
-      <ns:wsVersion>2.0.0</ns:wsVersion><ns:id>${c.id}</ns:id><ns:password>${c.password}</ns:password><ns:productId>PC61</ns:productId>
-    </ns:GetInventoryLevelsRequest>`;
-    const xml = await soap(cfg, "/promostandards/InventoryServiceBindingV2", "", body);
+    // The request wrapper lives in the service namespace, but the child fields are
+    // declared in the PromoStandards SharedObjects namespace.
+    const body = `<inv:GetInventoryLevelsRequest xmlns:inv="http://www.promostandards.org/WSDL/Inventory/2.0.0/" xmlns:sh="http://www.promostandards.org/WSDL/Inventory/2.0.0/SharedObjects/">
+      <sh:wsVersion>2.0.0</sh:wsVersion><sh:id>${xml(c.id)}</sh:id><sh:password>${xml(c.password)}</sh:password><sh:productId>PC61</sh:productId>
+    </inv:GetInventoryLevelsRequest>`;
+    const xml = await soap(cfg, "/promostandards/InventoryServiceBindingV2", "getInventoryLevels", body);
     // An auth failure returns a <ServiceMessage> with code 110/115 inside a 200 response.
     if (/<(?:[a-z0-9]+:)?code>1(10|15)<\//i.test(xml) || /Authentication/i.test(xml)) {
       return { ok: false, msg: "SanMar rejected credentials (check customer #, username, password)" };
@@ -89,11 +97,11 @@ export async function sanmarSearchStyles(cfg: SupplierCredConfig, q: string): Pr
 
 export async function sanmarGetProduct(cfg: SupplierCredConfig, styleId: string): Promise<SupplierProduct> {
   const c = creds(cfg);
-  const body = `<ns:GetProductRequest xmlns:ns="http://www.promostandards.org/WSDL/ProductDataService/2.0.0/">
-    <ns:wsVersion>2.0.0</ns:wsVersion><ns:id>${c.id}</ns:id><ns:password>${c.password}</ns:password>
-    <ns:productId>${styleId}</ns:productId><ns:localizationCountry>US</ns:localizationCountry><ns:localizationLanguage>en</ns:localizationLanguage>
-  </ns:GetProductRequest>`;
-  const xml = await soap(cfg, "/promostandards/ProductDataServiceBindingV2", "", body);
+  const body = `<pd:GetProductRequest xmlns:pd="http://www.promostandards.org/WSDL/ProductDataService/2.0.0/" xmlns:sh="http://www.promostandards.org/WSDL/ProductDataService/2.0.0/SharedObjects/">
+    <sh:wsVersion>2.0.0</sh:wsVersion><sh:id>${xml(c.id)}</sh:id><sh:password>${xml(c.password)}</sh:password>
+    <sh:localizationCountry>US</sh:localizationCountry><sh:localizationLanguage>en</sh:localizationLanguage><sh:productId>${xml(styleId)}</sh:productId>
+  </pd:GetProductRequest>`;
+  const xml = await soap(cfg, "/promostandards/ProductDataServiceBindingV2", "getProduct", body);
 
   const title = pick1(xml, "productName") ?? styleId;
   const description = pick1(xml, "description");
@@ -139,11 +147,11 @@ export async function sanmarGetInventory(cfg: SupplierCredConfig, skus: string[]
   // We group SKUs by style prefix when possible; otherwise we call per-SKU.
   const out: SupplierInventoryRow[] = [];
   for (const sku of skus) {
-    const body = `<ns:GetInventoryLevelsRequest xmlns:ns="http://www.promostandards.org/WSDL/Inventory/2.0.0/">
-      <ns:wsVersion>2.0.0</ns:wsVersion><ns:id>${c.id}</ns:id><ns:password>${c.password}</ns:password><ns:productId>${sku}</ns:productId>
-    </ns:GetInventoryLevelsRequest>`;
+      const body = `<inv:GetInventoryLevelsRequest xmlns:inv="http://www.promostandards.org/WSDL/Inventory/2.0.0/" xmlns:sh="http://www.promostandards.org/WSDL/Inventory/2.0.0/SharedObjects/">
+      <sh:wsVersion>2.0.0</sh:wsVersion><sh:id>${xml(c.id)}</sh:id><sh:password>${xml(c.password)}</sh:password><sh:productId>${xml(sku)}</sh:productId>
+    </inv:GetInventoryLevelsRequest>`;
     try {
-      const xml = await soap(cfg, "/promostandards/InventoryServiceBindingV2", "", body);
+      const xml = await soap(cfg, "/promostandards/InventoryServiceBindingV2", "getInventoryLevels", body);
       const qty = Number(pick1(xml, "quantityAvailable") ?? 0);
       out.push({ sku, qty: Number.isFinite(qty) ? qty : 0 });
     } catch (e) {
