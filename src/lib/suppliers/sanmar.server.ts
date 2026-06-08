@@ -86,10 +86,10 @@ export async function sanmarSearchStyles(cfg: SupplierCredConfig, q: string): Pr
 export async function sanmarGetProduct(cfg: SupplierCredConfig, styleId: string): Promise<SupplierProduct> {
   const c = creds(cfg);
   const body = `<ns:GetProductRequest xmlns:ns="http://www.promostandards.org/WSDL/ProductDataService/2.0.0/">
-    <wsVersion>2.0.0</wsVersion><id>${c.id}</id><password>${c.password}</password>
-    <productId>${styleId}</productId><localizationCountry>US</localizationCountry><localizationLanguage>en</localizationLanguage>
+    <ns:wsVersion>2.0.0</ns:wsVersion><ns:id>${c.id}</ns:id><ns:password>${c.password}</ns:password>
+    <ns:productId>${styleId}</ns:productId><ns:localizationCountry>US</ns:localizationCountry><ns:localizationLanguage>en</ns:localizationLanguage>
   </ns:GetProductRequest>`;
-  const xml = await soap(cfg, "/promostandards/ProductDataServiceBindingV2", "getProduct", body);
+  const xml = await soap(cfg, "/promostandards/ProductDataServiceBindingV2", "", body);
 
   const title = pick1(xml, "productName") ?? styleId;
   const description = pick1(xml, "description");
