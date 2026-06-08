@@ -97,11 +97,11 @@ export async function sanmarSearchStyles(cfg: SupplierCredConfig, q: string): Pr
 
 export async function sanmarGetProduct(cfg: SupplierCredConfig, styleId: string): Promise<SupplierProduct> {
   const c = creds(cfg);
-  const body = `<pd:GetProductRequest xmlns:pd="http://www.promostandards.org/WSDL/ProductDataService/2.0.0/" xmlns:sh="http://www.promostandards.org/WSDL/ProductDataService/2.0.0/SharedObjects/">
-    <sh:wsVersion>2.0.0</sh:wsVersion><sh:id>${escapeXml(c.id)}</sh:id><sh:password>${escapeXml(c.password)}</sh:password>
+  const body = `<pd:GetProductRequest xmlns:pd="http://www.promostandards.org/WSDL/ProductDataService/1.0.0/" xmlns:sh="http://www.promostandards.org/WSDL/ProductDataService/1.0.0/SharedObjects/">
+    <sh:wsVersion>1.0.0</sh:wsVersion><sh:id>${escapeXml(c.id)}</sh:id><sh:password>${escapeXml(c.password)}</sh:password>
     <sh:localizationCountry>US</sh:localizationCountry><sh:localizationLanguage>en</sh:localizationLanguage><sh:productId>${escapeXml(styleId)}</sh:productId>
   </pd:GetProductRequest>`;
-  const xml = await soap(cfg, "/promostandards/ProductDataServiceBindingV2", "getProduct", body);
+  const xml = await soap(cfg, "/promostandards/ProductDataServiceBinding", "getProduct", body);
 
   const title = pick1(xml, "productName") ?? styleId;
   const description = pick1(xml, "description");

@@ -18,8 +18,8 @@ type Supplier = keyof typeof SUPPLIER_LABEL;
 interface FieldDef { key: string; label: string; type?: string; placeholder?: string; help?: string }
 const SCHEMA: Record<Supplier, FieldDef[]> = {
   sanmar: [
-    { key: "id", label: "Customer #", placeholder: "12345" },
-    { key: "user", label: "Username" },
+    { key: "id", label: "Username", help: "SanMar web service username (sent as PromoStandards <id>)." },
+    { key: "user", label: "Customer #", placeholder: "12345" },
     { key: "password", label: "Password", type: "password" },
     { key: "sandbox", label: "Use sandbox (edev)", type: "checkbox" },
   ],
