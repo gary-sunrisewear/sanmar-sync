@@ -58,13 +58,17 @@ function pick1(xml: string, tag: string): string | null {
 export async function sanmarTest(cfg: SupplierCredConfig): Promise<{ ok: boolean; msg: string }> {
   try {
     const c = creds(cfg);
-    // Use Inventory 2.0.0 getFilterValues — lightweight credential check that
-    // doesn't require a real productId. Element order matches the XSD sequence:
-    // wsVersion, id, password.
-    const body = `<ns:GetFilterValuesRequest xmlns:ns="http://www.promostandards.org/WSDL/Inventory/2.0.0/">
-      <ns:wsVersion>2.0.0</ns:wsVersion><ns:id>${c.id}</ns:id><ns:password>${c.password}</ns:password>
-    </ns:GetFilterValuesRequest>`;
-    await soap(cfg, "/promostandards/InventoryServiceBindingV2", "", body);
+    // Test using Inventory 2.0.0 getInventoryLevels with SanMar's reference style "PC61".
+    // PromoStandards XSDs are elementFormDefault="qualified" so child elements need the ns prefix,
+    // and the sequence is: wsVersion, id, password, productId.
+    const body = `<ns:GetInventoryLevelsRequest xmlns:ns="http://www.promostandards.org/WSDL/Inventory/2.0.0/">
+      <ns:wsVersion>2.0.0</ns:wsVersion><ns:id>${c.id}</ns:id><ns:password>${c.password}</ns:password><ns:productId>PC61</ns:productId>
+    </ns:GetInventoryLevelsRequest>`;
+    const xml = await soap(cfg, "/promostandards/InventoryServiceBindingV2", "", body);
+    // An auth failure returns a <ServiceMessage> with code 110/115 inside a 200 response.
+    if (/<(?:[a-z0-9]+:)?code>1(10|15)<\//i.test(xml) || /Authentication/i.test(xml)) {
+      return { ok: false, msg: "SanMar rejected credentials (check customer #, username, password)" };
+    }
     return { ok: true, msg: "Connected" };
   } catch (e) {
     return { ok: false, msg: e instanceof Error ? e.message : String(e) };
