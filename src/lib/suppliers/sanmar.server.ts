@@ -103,20 +103,22 @@ export async function sanmarGetProduct(cfg: SupplierCredConfig, styleId: string)
   const description = descParts.length ? Array.from(new Set(descParts)).join("\n\n") : null;
   const brand = pickFirstOf(xml, ["productBrand", "ProductBrand", "primaryBrand", "brandName"]) ?? "SanMar";
 
-  // Images: pull from ProductMediaArray only, deduped
-  const mediaBlocks = pickAll(xml, "ProductMedia");
+  // Images: ProductData rarely carries media for SanMar — fetch via Media Content Service
+  const mediaBlocks = await fetchMediaContent(cfg, styleId).catch((e) => {
+    console.error("SanMar media fetch failed", e);
+    return [] as Array<{ url: string; color: string | null; classType: string | null }>;
+  });
   const imageSet = new Set<string>();
   for (const m of mediaBlocks) {
-    const url = pick1(m, "url");
-    if (url && /^https?:\/\//i.test(url)) imageSet.add(url);
-  }
-  // Fallback: any url field if MediaArray was empty
-  if (imageSet.size === 0) {
-    pickAll(xml, "url").forEach((u) => {
-      if (/^https?:\/\//i.test(u)) imageSet.add(u);
-    });
+    if (m.url && /^https?:\/\//i.test(m.url)) imageSet.add(m.url);
   }
   const images = Array.from(imageSet);
+
+  // Pricing — PromoStandards PricingAndConfiguration 1.0.0
+  const priceMap = await fetchPricingByStyle(cfg, styleId).catch((e) => {
+    console.error("SanMar pricing fetch failed", e);
+    return new Map<string, number>();
+  });
 
   // Variants from ProductPartArray
   const partBlocks = pickAll(xml, "ProductPart");
@@ -125,20 +127,19 @@ export async function sanmarGetProduct(cfg: SupplierCredConfig, styleId: string)
     const sizeBlock = pick1(p, "ApparelSize") ?? p;
     const color = pickFirstOf(colorBlock, ["colorName", "color"]);
     const size = pickFirstOf(sizeBlock, ["labelSize", "size"]);
+    const sku = pickFirstOf(p, ["partId", "partSku"]) ?? "";
     // pick a color-specific image if available
     const partColor = color?.toLowerCase();
     let image: string | null = null;
     if (partColor) {
-      for (const m of mediaBlocks) {
-        const mc = pick1(m, "colorName")?.toLowerCase();
-        if (mc === partColor) { image = pick1(m, "url"); break; }
-      }
+      const match = mediaBlocks.find((m) => m.color?.toLowerCase() === partColor);
+      image = match?.url ?? null;
     }
     return {
-      sku: pickFirstOf(p, ["partId", "partSku"]) ?? "",
+      sku,
       size: size ?? null,
       color: color ?? null,
-      cost: 0,
+      cost: priceMap.get(sku) ?? 0,
       qty: 0,
       image,
       barcode: pick1(p, "GTIN") ?? null,
@@ -168,6 +169,58 @@ export async function sanmarGetProduct(cfg: SupplierCredConfig, styleId: string)
     variants,
   };
 }
+
+async function fetchMediaContent(cfg: SupplierCredConfig, styleId: string): Promise<Array<{ url: string; color: string | null; classType: string | null }>> {
+  const c = creds(cfg);
+  const body = `<ns:GetMediaContentRequest xmlns:ns="http://www.promostandards.org/WSDL/MediaService/1.0.0/" xmlns:sh="http://www.promostandards.org/WSDL/MediaService/1.0.0/SharedObjects/">
+    <sh:wsVersion>1.0.0</sh:wsVersion><sh:id>${escapeXml(c.id)}</sh:id><sh:password>${escapeXml(c.password)}</sh:password>
+    <sh:mediaType>Image</sh:mediaType><sh:productId>${escapeXml(styleId)}</sh:productId>
+    <sh:cultureName>en-US</sh:cultureName>
+  </ns:GetMediaContentRequest>`;
+  const xml = await soap(cfg, "/promostandards/MediaContentServiceBinding", "getMediaContent", body);
+  const out: Array<{ url: string; color: string | null; classType: string | null }> = [];
+  for (const m of pickAll(xml, "MediaContent")) {
+    const url = pick1(m, "url");
+    if (!url) continue;
+    out.push({
+      url,
+      color: pick1(m, "color") ?? pick1(m, "colorName"),
+      classType: pick1(m, "classType") ?? pick1(m, "classTypeName"),
+    });
+  }
+  return out;
+}
+
+async function fetchPricingByStyle(cfg: SupplierCredConfig, styleId: string): Promise<Map<string, number>> {
+  const c = creds(cfg);
+  const body = `<ns:GetConfigurationAndPricingRequest xmlns:ns="http://www.promostandards.org/WSDL/PricingAndConfiguration/1.0.0/" xmlns:sh="http://www.promostandards.org/WSDL/PricingAndConfiguration/1.0.0/SharedObjects/">
+    <sh:wsVersion>1.0.0</sh:wsVersion><sh:id>${escapeXml(c.id)}</sh:id><sh:password>${escapeXml(c.password)}</sh:password>
+    <sh:productId>${escapeXml(styleId)}</sh:productId>
+    <sh:currency>USD</sh:currency>
+    <sh:fobId>1</sh:fobId>
+    <sh:priceType>Net</sh:priceType>
+    <sh:localizationCountry>US</sh:localizationCountry>
+    <sh:localizationLanguage>en</sh:localizationLanguage>
+    <sh:configurationType>Blank</sh:configurationType>
+  </ns:GetConfigurationAndPricingRequest>`;
+  const xml = await soap(cfg, "/promostandards/PricingAndConfigurationServiceBinding", "getConfigurationAndPricing", body);
+  const map = new Map<string, number>();
+  for (const part of pickAll(xml, "PartPriceArray")) {
+    // each PartPriceArray belongs to a Part — but partId is sibling, so walk Part blocks instead
+  }
+  // Walk each Part block: extract partId + lowest price tier
+  for (const part of pickAll(xml, "Part")) {
+    const partId = pickFirstOf(part, ["partId", "partSku"]);
+    if (!partId) continue;
+    const prices = pickAll(part, "PartPrice")
+      .map((pp) => ({ qty: Number(pick1(pp, "minQuantity") ?? 1), price: Number(pick1(pp, "price") ?? 0) }))
+      .filter((x) => Number.isFinite(x.price) && x.price > 0)
+      .sort((a, b) => a.qty - b.qty);
+    if (prices.length) map.set(partId, prices[0].price);
+  }
+  return map;
+}
+
 
 async function fetchInventoryByStyle(cfg: SupplierCredConfig, styleId: string): Promise<Map<string, number>> {
   const c = creds(cfg);
