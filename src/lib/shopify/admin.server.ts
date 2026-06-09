@@ -8,10 +8,14 @@ const SHOP_DOMAIN =
   process.env.SHOPIFY_STORE_PERMANENT_DOMAIN || "sunrisetester.myshopify.com";
 
 function requireToken(): string {
-  const tok = process.env.SHOPIFY_ACCESS_TOKEN;
-  if (!tok) throw new Error("SHOPIFY_ACCESS_TOKEN is not configured");
+  // Prefer the per-user online access token issued by the Lovable Shopify connector
+  // (the offline SHOPIFY_ACCESS_TOKEN can be stale/invalid in dev).
+  const onlineKey = Object.keys(process.env).find((k) => k.startsWith("SHOPIFY_ONLINE_ACCESS_TOKEN:user:"));
+  const tok = (onlineKey && process.env[onlineKey]) || process.env.SHOPIFY_ACCESS_TOKEN;
+  if (!tok) throw new Error("Shopify access token is not configured");
   return tok;
 }
+
 
 function locationId(): string {
   const id = process.env.SHOPIFY_LOCATION_ID;
