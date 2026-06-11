@@ -3,6 +3,8 @@
 
 import type { SupplierCredConfig, SupplierInventoryRow, SupplierProduct } from "./types";
 
+type SanMarMedia = { url: string; color: string | null; classType: string | null; partId: string | null };
+
 function host(cfg: SupplierCredConfig): string {
   return cfg.sandbox ? "https://edev-ws.sanmar.com:8080" : "https://ws.sanmar.com:8080";
 }
@@ -106,7 +108,7 @@ export async function sanmarGetProduct(cfg: SupplierCredConfig, styleId: string)
   // Images: ProductData rarely carries media for SanMar — fetch via Media Content Service
   const mediaBlocks = await fetchMediaContent(cfg, styleId).catch((e) => {
     console.error("SanMar media fetch failed", e);
-    return [] as Array<{ url: string; color: string | null; classType: string | null }>;
+    return [] as SanMarMedia[];
   });
   const imageSet = new Set<string>();
   for (const m of mediaBlocks) {
@@ -172,7 +174,7 @@ export async function sanmarGetProduct(cfg: SupplierCredConfig, styleId: string)
   };
 }
 
-async function fetchMediaContent(cfg: SupplierCredConfig, styleId: string): Promise<Array<{ url: string; color: string | null; classType: string | null }>> {
+async function fetchMediaContent(cfg: SupplierCredConfig, styleId: string): Promise<SanMarMedia[]> {
   const c = creds(cfg);
   const body = `<ns:GetMediaContentRequest xmlns:ns="http://www.promostandards.org/WSDL/MediaService/1.0.0/" xmlns:sh="http://www.promostandards.org/WSDL/MediaService/1.0.0/SharedObjects/">
     <sh:wsVersion>1.0.0</sh:wsVersion><sh:id>${escapeXml(c.id)}</sh:id><sh:password>${escapeXml(c.password)}</sh:password>
@@ -180,14 +182,15 @@ async function fetchMediaContent(cfg: SupplierCredConfig, styleId: string): Prom
     <sh:cultureName>en-US</sh:cultureName>
   </ns:GetMediaContentRequest>`;
   const xml = await soap(cfg, "/promostandards/MediaContentServiceBinding", "getMediaContent", body);
-  const out: Array<{ url: string; color: string | null; classType: string | null }> = [];
+  const out: SanMarMedia[] = [];
   for (const m of pickAll(xml, "MediaContent")) {
-    const url = pick1(m, "url");
+    const url = pickFirstOf(m, ["url", "URL", "mediaUrl", "mediaURL", "location", "href"]);
     if (!url) continue;
     out.push({
       url,
-      color: pick1(m, "color") ?? pick1(m, "colorName"),
-      classType: pick1(m, "classType") ?? pick1(m, "classTypeName"),
+      color: pickFirstOf(m, ["color", "colorName", "Color", "ColorName"]),
+      classType: pickFirstOf(m, ["classType", "classTypeName", "ClassType", "ClassTypeName"]),
+      partId: pickFirstOf(m, ["partId", "partID", "partSku", "sku"]),
     });
   }
   return out;
