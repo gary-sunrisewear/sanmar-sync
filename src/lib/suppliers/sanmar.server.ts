@@ -141,6 +141,18 @@ export async function sanmarGetProduct(cfg: SupplierCredConfig, styleId: string)
       image = match?.url ?? null;
       if (image && /^https?:\/\//i.test(image)) imageSet.add(image);
     }
+    const weightVal = pickFirstOf(p, ["weight", "Weight"]);
+    const weightUom = pickFirstOf(p, ["weightUom", "weightUOM", "WeightUom"]);
+    let weight_grams: number | null = null;
+    if (weightVal) {
+      const w = parseFloat(weightVal);
+      if (Number.isFinite(w) && w > 0) {
+        if (!weightUom || /^g/i.test(weightUom)) weight_grams = Math.round(w);
+        else if (/^oz/i.test(weightUom)) weight_grams = Math.round(w * 28.3495);
+        else if (/^lb/i.test(weightUom)) weight_grams = Math.round(w * 453.592);
+        else if (/^kg/i.test(weightUom)) weight_grams = Math.round(w * 1000);
+      }
+    }
     return {
       sku,
       size: size ?? null,
@@ -149,7 +161,7 @@ export async function sanmarGetProduct(cfg: SupplierCredConfig, styleId: string)
       qty: 0,
       image,
       barcode: pick1(p, "GTIN") ?? null,
-      weight_grams: null,
+      weight_grams,
     };
   }).filter((v) => v.sku);
 
@@ -186,6 +198,7 @@ async function fetchMediaContent(cfg: SupplierCredConfig, styleId: string): Prom
     <sh:cultureName>en-US</sh:cultureName>
   </ns:GetMediaContentRequest>`;
   const xml = await soap(cfg, "/promostandards/MediaContentServiceBinding", "getMediaContent", body);
+  console.log("[SanMar media] raw response:", xml.slice(0, 2000));
   const out: SanMarMedia[] = [];
   const mediaItems = [...pickAll(xml, "MediaContent"), ...pickAll(xml, "mediaContent")];
   for (const m of mediaItems) {

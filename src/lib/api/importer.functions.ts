@@ -240,7 +240,7 @@ export const importProduct = createServerFn({ method: "POST" })
       // Determine option axes
       const hasSize = filtered.some((v) => v.size);
       const hasColor = filtered.some((v) => v.color);
-      const options = [hasSize && "Size", hasColor && "Color"].filter(Boolean) as string[];
+      const options = [hasColor && "Color", hasSize && "Size"].filter(Boolean) as string[];
 
       const { shopifyCreateProduct } = await import("@/lib/shopify/admin.server");
       const created = await shopifyCreateProduct({
