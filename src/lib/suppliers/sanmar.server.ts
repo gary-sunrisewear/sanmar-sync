@@ -112,7 +112,6 @@ export async function sanmarGetProduct(cfg: SupplierCredConfig, styleId: string)
   for (const m of mediaBlocks) {
     if (m.url && /^https?:\/\//i.test(m.url)) imageSet.add(m.url);
   }
-  const images = Array.from(imageSet);
 
   // Pricing — PromoStandards PricingAndConfiguration 1.0.0
   const priceMap = await fetchPricingByStyle(cfg, styleId).catch((e) => {
@@ -132,8 +131,9 @@ export async function sanmarGetProduct(cfg: SupplierCredConfig, styleId: string)
     const partColor = color?.toLowerCase();
     let image: string | null = null;
     if (partColor) {
-      const match = mediaBlocks.find((m) => m.color?.toLowerCase() === partColor);
+      const match = mediaBlocks.find((m) => m.color?.toLowerCase() === partColor || m.partId?.toLowerCase() === sku.toLowerCase());
       image = match?.url ?? null;
+      if (image && /^https?:\/\//i.test(image)) imageSet.add(image);
     }
     return {
       sku,
@@ -146,6 +146,8 @@ export async function sanmarGetProduct(cfg: SupplierCredConfig, styleId: string)
       weight_grams: null,
     };
   }).filter((v) => v.sku);
+
+  const images = Array.from(imageSet);
 
   // Inventory — one call per style, map partId -> qty
   if (variants.length) {
