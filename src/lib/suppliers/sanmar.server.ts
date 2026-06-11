@@ -111,6 +111,10 @@ export async function sanmarGetProduct(cfg: SupplierCredConfig, styleId: string)
     return [] as SanMarMedia[];
   });
   const imageSet = new Set<string>();
+  for (const url of pickAll(xml, "url")) {
+    const clean = url.trim();
+    if (/^https?:\/\//i.test(clean) && /\.(jpe?g|png|webp)(\?|$)/i.test(clean)) imageSet.add(clean);
+  }
   for (const m of mediaBlocks) {
     if (m.url && /^https?:\/\//i.test(m.url)) imageSet.add(m.url);
   }
@@ -183,7 +187,8 @@ async function fetchMediaContent(cfg: SupplierCredConfig, styleId: string): Prom
   </ns:GetMediaContentRequest>`;
   const xml = await soap(cfg, "/promostandards/MediaContentServiceBinding", "getMediaContent", body);
   const out: SanMarMedia[] = [];
-  for (const m of pickAll(xml, "MediaContent")) {
+  const mediaItems = [...pickAll(xml, "MediaContent"), ...pickAll(xml, "mediaContent")];
+  for (const m of mediaItems) {
     const url = pickFirstOf(m, ["url", "URL", "mediaUrl", "mediaURL", "location", "href"]);
     if (!url) continue;
     out.push({
