@@ -7,13 +7,26 @@ const API_VERSION = "2025-07";
 const SHOP_DOMAIN =
   process.env.SHOPIFY_STORE_PERMANENT_DOMAIN || "sunrisetester.myshopify.com";
 
-function requireToken(): string {
-  // Prefer the per-user online access token issued by the Lovable Shopify connector
-  // (the offline SHOPIFY_ACCESS_TOKEN can be stale/invalid in dev).
-  const onlineKey = Object.keys(process.env).find((k) => k.startsWith("SHOPIFY_ONLINE_ACCESS_TOKEN:user:"));
-  const tok = (onlineKey && process.env[onlineKey]) || process.env.SHOPIFY_ACCESS_TOKEN;
-  if (!tok) throw new Error("Shopify access token is not configured");
-  return tok;
+function tokenCandidates(): Array<{ label: string; token: string }> {
+  // Per-user online tokens are refreshed by the Shopify OAuth flow, but older
+  // offline/project tokens can remain in the environment. Try all available
+  // candidates so one stale token does not block imports.
+  const online = Object.keys(process.env)
+    .filter((k) => k.startsWith("SHOPIFY_ONLINE_ACCESS_TOKEN:user:"))
+    .sort()
+    .map((key) => ({ label: key.replace(/:user:.+$/, ":user:<current>"), token: process.env[key] }))
+    .filter((entry): entry is { label: string; token: string } => Boolean(entry.token));
+
+  const offline = process.env.SHOPIFY_ACCESS_TOKEN
+    ? [{ label: "SHOPIFY_ACCESS_TOKEN", token: process.env.SHOPIFY_ACCESS_TOKEN }]
+    : [];
+
+  const seen = new Set<string>();
+  return [...online, ...offline].filter(({ token }) => {
+    if (seen.has(token)) return false;
+    seen.add(token);
+    return true;
+  });
 }
 
 
@@ -25,12 +38,21 @@ function locationId(): string {
 
 async function adminFetch(path: string, init?: RequestInit): Promise<Response> {
   const url = `https://${SHOP_DOMAIN}/admin/api/${API_VERSION}${path}`;
-  const headers = new Headers(init?.headers);
-  headers.set("X-Shopify-Access-Token", requireToken());
-  if (init?.body && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
-  headers.set("Accept", "application/json");
-  const res = await fetch(url, { ...init, headers });
-  return res;
+  const candidates = tokenCandidates();
+  if (!candidates.length) throw new Error("Shopify access token is not configured");
+
+  let lastResponse: Response | null = null;
+  for (const { label, token } of candidates) {
+    const headers = new Headers(init?.headers);
+    headers.set("X-Shopify-Access-Token", token);
+    if (init?.body && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
+    headers.set("Accept", "application/json");
+    const res = await fetch(url, { ...init, headers });
+    if (res.status !== 401) return res;
+    console.warn(`Shopify token candidate failed with 401: ${label}`);
+    lastResponse = res;
+  }
+  return lastResponse!;
 }
 
 async function adminJson<T = unknown>(path: string, init?: RequestInit): Promise<T> {
