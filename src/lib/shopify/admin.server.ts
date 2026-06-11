@@ -113,8 +113,11 @@ export async function shopifyCreateProduct(input: CreateProductInput): Promise<C
 
   const variants = input.variants.map((v) => {
     const option_values: Record<string, string | null | undefined> = {};
-    if (input.options?.[0]) option_values.option1 = v.size ?? null;
-    if (input.options?.[1]) option_values.option2 = v.color ?? null;
+    input.options?.forEach((name, i) => {
+      const key = `option${i + 1}`;
+      if (name.toLowerCase() === "size") option_values[key] = v.size ?? null;
+      else if (name.toLowerCase() === "color") option_values[key] = v.color ?? null;
+    });
     return {
       sku: v.sku,
       price: v.price.toFixed(2),

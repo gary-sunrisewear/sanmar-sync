@@ -113,7 +113,7 @@ export async function sanmarGetProduct(cfg: SupplierCredConfig, styleId: string)
   const imageSet = new Set<string>();
   for (const url of pickAll(xml, "url")) {
     const clean = url.trim();
-    if (/^https?:\/\//i.test(clean) && /\.(jpe?g|png|webp)(\?|$)/i.test(clean)) imageSet.add(clean);
+    if (/^https?:\/\//i.test(clean)) imageSet.add(clean);
   }
   for (const m of mediaBlocks) {
     if (m.url && /^https?:\/\//i.test(m.url)) imageSet.add(m.url);
@@ -180,7 +180,7 @@ export async function sanmarGetProduct(cfg: SupplierCredConfig, styleId: string)
 
 async function fetchMediaContent(cfg: SupplierCredConfig, styleId: string): Promise<SanMarMedia[]> {
   const c = creds(cfg);
-  const body = `<ns:GetMediaContentRequest xmlns:ns="http://www.promostandards.org/WSDL/MediaService/1.0.0/" xmlns:sh="http://www.promostandards.org/WSDL/MediaService/1.0.0/SharedObjects/">
+  const body = `<ns:GetMediaContentRequest xmlns:ns="http://www.promostandards.org/WSDL/MediaContentService/1.0.0/" xmlns:sh="http://www.promostandards.org/WSDL/MediaContentService/1.0.0/SharedObjects/">
     <sh:wsVersion>1.0.0</sh:wsVersion><sh:id>${escapeXml(c.id)}</sh:id><sh:password>${escapeXml(c.password)}</sh:password>
     <sh:mediaType>Image</sh:mediaType><sh:productId>${escapeXml(styleId)}</sh:productId>
     <sh:cultureName>en-US</sh:cultureName>
