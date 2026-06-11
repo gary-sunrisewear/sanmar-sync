@@ -198,9 +198,12 @@ async function fetchMediaContent(cfg: SupplierCredConfig, styleId: string): Prom
     <sh:cultureName>en-US</sh:cultureName>
   </ns:GetMediaContentRequest>`;
   const xml = await soap(cfg, "/promostandards/MediaContentServiceBinding", "getMediaContent", body);
-  console.log("[SanMar media] raw response:", xml.slice(0, 2000));
   const out: SanMarMedia[] = [];
-  const mediaItems = [...pickAll(xml, "MediaContent"), ...pickAll(xml, "mediaContent")];
+  const mediaItems = [
+    ...pickAll(xml, "MediaContent"),
+    ...pickAll(xml, "mediaContent"),
+    ...pickAll(xml, "MediaContents"),
+  ];
   for (const m of mediaItems) {
     const url = pickFirstOf(m, ["url", "URL", "mediaUrl", "mediaURL", "location", "href"]);
     if (!url) continue;
@@ -210,6 +213,14 @@ async function fetchMediaContent(cfg: SupplierCredConfig, styleId: string): Prom
       classType: pickFirstOf(m, ["classType", "classTypeName", "ClassType", "ClassTypeName"]),
       partId: pickFirstOf(m, ["partId", "partID", "partSku", "sku"]),
     });
+  }
+  // Fallback: scrape any SanMar CDN URLs directly from the raw XML
+  if (out.length === 0) {
+    const cdnRe = /https?:\/\/[^\s"'<>]*(?:sanmar|sanmarcdn)[^\s"'<>]*/gi;
+    let m: RegExpExecArray | null;
+    while ((m = cdnRe.exec(xml))) {
+      out.push({ url: m[0], color: null, classType: null, partId: null });
+    }
   }
   return out;
 }
